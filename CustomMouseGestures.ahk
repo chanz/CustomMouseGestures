@@ -175,6 +175,15 @@ WheelUp::
 WheelDown::
 
 	MouseGetPos,,, hWin,, 2
+
+	WinGetTitle, hWinTitle, ahk_id %hWin%
+
+	if (hWinTitle == "") {
+		;tooltip, emtpy!
+		Send, {%A_ThisHotkey%}
+		return
+	}
+
 	IfWinNotActive, ahk_id %hwin%
 	{
 		WinActivate, ahk_id %hWin%
