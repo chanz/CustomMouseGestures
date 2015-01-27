@@ -19,11 +19,6 @@ SetBatchLines, -1 ;Run as fast as possible
 szIgnoreProcesses:="KSP.exe|mstsc.exe" ; RegEx Match to ignore windows with these process names
 szAllowProcesses:="explorer.exe|firefox.exe"
 
-; Settings for Fast Scrolling
-WheelDelta := 120 << 16 ;As defined by Microsoft
-NormalScrollSpeed := 1 * WheelDelta
-FastScrollSpeed := 6 * WheelDelta
-
 ; Settings for Mouse Gestures (todo...)
 
 ; Incode Vars (dont' change)
@@ -174,12 +169,19 @@ GetMonitorQuadrant(monitorNumber, quadrantName="top", ByRef x=0, ByRef y=0, ByRe
 WheelUp::
 WheelDown::
 
+	; Settings for Fast Scrolling
+	WheelDelta := 120 << 16 ;As defined by Microsoft
+	NormalScrollSpeed := 1 * WheelDelta
+	FastScrollSpeed := 6 * WheelDelta
+
 	MouseGetPos,,, hWin,, 2
 
 	WinGetTitle, hWinTitle, ahk_id %hWin%
 
 	if (hWinTitle == "") {
-		;tooltip, emtpy!
+		if (GetKeyState("Ctrl", P)) {
+			ToolTipTime("Window name is empty!")
+		}
 		Send, {%A_ThisHotkey%}
 		return
 	}
@@ -195,22 +197,22 @@ WheelDown::
 		mWheelUsed:=A_ThisHotkey
 
 		if (A_ThisHotkey="WheelUp") {
-			;FocuslessScroll(FastScrollSpeed)
-			HoverScroll(6)
+			FocuslessScroll(FastScrollSpeed)
+			;HoverScroll(6)
 		}
 		else if (A_ThisHotKey="WheelDown") {
-			;FocuslessScroll(-FastScrollSpeed)
-			HoverScroll(-6)
+			FocuslessScroll(-FastScrollSpeed)
+			;HoverScroll(-6)
 		}
 	}
 	else {
 		if (A_ThisHotkey="WheelUp") {
-			;FocuslessScroll(NormalScrollSpeed)
-			HoverScroll(1)
+			FocuslessScroll(NormalScrollSpeed)
+			;HoverScroll(1)
 		}
 		else if (A_ThisHotKey="WheelDown") {
-			;FocuslessScroll(-NormalScrollSpeed)
-			HoverScroll(-1)
+			FocuslessScroll(-NormalScrollSpeed)
+			;HoverScroll(-1)
 		}
 	}
 return
@@ -265,6 +267,9 @@ rbutton::
 			Send, ^w
 			MouseMove, iEndPos_X, iEndPos_Y
 		}
+		else if (szStartPos_WindowProcessName="sublime_text.exe") {
+			Send, ^w
+		}
 		else {
 			WinClose, ahk_id %widStartPos_Window%
 		}
@@ -281,6 +286,9 @@ rbutton::
 			Send, ^+t
 			MouseMove, iEndPos_X, iEndPos_Y
 		}
+		else if (szStartPos_WindowProcessName="sublime_text.exe") {
+			Send, ^+t
+		}
 	}
 	else if (gst="ur")
 	{
@@ -294,6 +302,9 @@ rbutton::
 			Send, ^{TAB}
 			MouseMove, iEndPos_X, iEndPos_Y
 		}
+		else if (szStartPos_WindowProcessName="sublime_text.exe") {
+			Send, ^{TAB}
+		}
 	}
 	else if (gst="ul")
 	{
@@ -306,6 +317,9 @@ rbutton::
 			Send, {F6}
 			Send, ^+{TAB}
 			MouseMove, iEndPos_X, iEndPos_Y
+		}
+		else if (szStartPos_WindowProcessName="sublime_text.exe") {
+			Send, ^+{TAB}
 		}
 	}
 	else if (gst="ru")
