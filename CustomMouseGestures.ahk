@@ -197,22 +197,22 @@ WheelDown::
 		mWheelUsed:=A_ThisHotkey
 
 		if (A_ThisHotkey="WheelUp") {
-			FocuslessScroll(FastScrollSpeed)
-			;HoverScroll(6)
+			;FocuslessScroll(FastScrollSpeed)
+			HoverScroll(6)
 		}
 		else if (A_ThisHotKey="WheelDown") {
-			FocuslessScroll(-FastScrollSpeed)
-			;HoverScroll(-6)
+			;FocuslessScroll(-FastScrollSpeed)
+			HoverScroll(-6)
 		}
 	}
 	else {
 		if (A_ThisHotkey="WheelUp") {
-			FocuslessScroll(NormalScrollSpeed)
-			;HoverScroll(1)
+			;FocuslessScroll(NormalScrollSpeed)
+			HoverScroll(1)
 		}
 		else if (A_ThisHotKey="WheelDown") {
-			FocuslessScroll(-NormalScrollSpeed)
-			;HoverScroll(-1)
+			;FocuslessScroll(-NormalScrollSpeed)
+			HoverScroll(-1)
 		}
 	}
 return
