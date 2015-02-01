@@ -3,7 +3,7 @@
 #InstallKeybdHook
 #HotkeyModifierTimeout -1
 #MaxThreadsPerHotkey 6
-#MaxHotkeysPerInterval 100 ;Stops warning when mouse spins really fast
+#MaxHotkeysPerInterval 10000 ;Stops warning when mouse spins really fast
 #SingleInstance Force
 #Include %A_ScriptDir%\HoverScroll.ahk
 
@@ -165,6 +165,8 @@ GetMonitorQuadrant(monitorNumber, quadrantName="top", ByRef x=0, ByRef y=0, ByRe
 	}
 }
 
+; Pixel precise scrolling??
+; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787593%28v=vs.85%29.aspx
 
 WheelUp::
 WheelDown::
@@ -216,6 +218,88 @@ WheelDown::
 		}
 	}
 return
+
+
+$*MButton::
+;Hotkey, $*MButton Up, MButtonup, off
+KeyWait, MButton, T0.2
+If ErrorLevel = 1
+{
+	Hotkey, $*MButton Up, MButtonup, on
+	MouseGetPos, ox, oy
+ 	SetTimer, WatchTheMouse, 50
+	;SystemCursor("Toggle")
+}
+Else
+	Send {MButton}
+return
+
+MButtonup:
+Hotkey, $*MButton Up, MButtonup, off
+SetTimer, WatchTheMouse, off
+;SystemCursor("Toggle")
+return
+
+; Initial start after MBUTTON has been pressed long enough: Scroll as soon the mouse has moved 4px into one direction
+; When scrolling has stopped (ie: mouse is not moving anymore after 150ms), start at the initial point again.
+; During mouse movement (unchanged direction), continue to scroll.
+; When the delta of the mouse distance is over 5 increase by one more scroll event. (over 10 = two more scroll events)
+WatchTheMouse:
+    MouseGetPos, nx, ny
+    dy := ny-oy
+    dx := nx-ox
+
+    ; When moving the mouse up and down  
+    If (dy**2 > 3 and dy**2>dx**2)
+    {
+    	; When the delta of the mouse distance is over 5 increase by one more scroll event. (over 10 = two more scroll events)
+        multiplyer := Floor(Abs(dy) / 5)
+        
+		If (dy > 0)
+        {
+			;Click Wheelup
+            doTheScrollDirection := 1 + multiplyer
+        }
+		Else
+        {
+			;Click WheelDown
+            doTheScrollDirection := -1 - multiplyer
+        }
+    }
+
+    if (doTheScrollDirection != 0)
+    {
+        MouseGetPos,,, hWin,, 2
+        IfWinNotActive, ahk_id %hwin%
+		{
+			WinActivate, ahk_id %hWin%
+		}
+        LineScroll(hWin, 0, doTheScrollDirection)
+        doTheScrollDirection := 0
+    }
+
+    ;tooltip, times: %times%`ndy: %dy% dx: %dx%`nmulti: %multiplyer%
+    MouseMove ox, oy
+return
+
+LineScroll(hWnd, dx, dy)
+{
+	;DllCall("ScrollWindowEx" , UInt, hWnd, Int, dx, Int, dy, Int, NULL, Int, NULL, Int, 0, Int, 0, Uint, NULL)
+	if (dy > 0)
+	{
+		direction := 1
+	}
+	else if dy < 0
+	{
+		direction := 0
+	}
+	repeat := Abs(dy)
+	loop %repeat%
+	{
+		;tooltip, direction: %direction%`ndy: %dy%
+		DllCall("PostMessage","PTR",hWnd,"UInt",0x115,"PTR",direction,"PTR",1)
+	}
+}
 
 FocuslessScroll(ScrollStep)
 {
