@@ -174,6 +174,19 @@ GetMonitorQuadrant(monitorNumber, quadrantName="top", ByRef x=0, ByRef y=0, ByRe
 	}
 }
 
+^!F4::
+	WinGet, activeID, ID, A
+	WinGet, activePID, PID, A
+
+	WinKill, ahk_id %active_id%
+	
+	WinWaitClose, ahk_id %active_id%,, 1
+	if ErrorLevel
+	{
+		Process, Close, %activePID%
+	}
+
+return
 
 ^F2::
 	MouseGetPos,,, hWin,, 2 ; Get window handle under the mouse position
@@ -313,7 +326,7 @@ WatchTheMouse:
 		{
 			WinActivate, ahk_id %hWin%
 		}
-        LineScroll(0, doTheScrollDirection)
+        LineScroll(hWin, 0, doTheScrollDirection)
         doTheScrollDirection := 0
     }
 
@@ -321,7 +334,7 @@ WatchTheMouse:
     MouseMove ox, oy
 return
 
-LineScroll(dx, dy)
+LineScroll(hWnd, dx, dy)
 {
 	;DllCall("ScrollWindowEx" , UInt, hWnd, Int, dx, Int, dy, Int, NULL, Int, NULL, Int, 0, Int, 0, Uint, NULL)
 	if (dy < 0)
