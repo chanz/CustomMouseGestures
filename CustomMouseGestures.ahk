@@ -14,12 +14,21 @@ CoordMode, Mouse, Screen
 SetMouseDelay, -1
 SetKeyDelay, -1
 SetBatchLines, -1 ;Run as fast as possible
+Process Priority,,R
 
 ; General Settings
-szIgnoreProcesses:="KSP.exe|mstsc.exe" ; RegEx Match to ignore windows with these process names
-szAllowProcesses:="explorer.exe|firefox.exe"
+szIgnoreProcesses:="" ; RegEx Match to ignore windows with these process names
+szAllowProcesses:=""
+szSettingsPath:="CustomMouseGestures.ini" ; Filename only means WorkingDir is assumed, since we set WorkingDir above its A_ScriptDir
 
 ; Settings for Mouse Gestures (todo...)
+
+
+; Load Ini Settings
+LoadSettings()
+
+; Trap Hook
+OnExit("Exit_CustomMouseGestures")
 
 ; Incode Vars (dont' change)
 mWheelUsed:=0
@@ -165,6 +174,21 @@ GetMonitorQuadrant(monitorNumber, quadrantName="top", ByRef x=0, ByRef y=0, ByRe
 	}
 }
 
+
+^F2::
+	MouseGetPos,,, hWin,, 2 ; Get window handle under the mouse position
+	WinGet, winProcessName, ProcessName, ahk_id %hWin% ; Get processname form the window under the mouse
+
+	; add the processname to the ignore list
+	szIgnoreProcesses=%winProcessName%|%szIgnoreProcesses%
+
+	; Quick info for the user whats new in the list
+	TrayTip, New Application, Process '%winProcessName%' added to the ignore list, 5, 1
+
+	SaveSettings()
+return
+
+
 ; Pixel precise scrolling??
 ; https://msdn.microsoft.com/en-us/library/windows/desktop/bb787593%28v=vs.85%29.aspx
 
@@ -221,23 +245,38 @@ return
 
 
 $*MButton::
-;Hotkey, $*MButton Up, MButtonup, off
-KeyWait, MButton, T0.2
-If ErrorLevel = 1
-{
-	Hotkey, $*MButton Up, MButtonup, on
-	MouseGetPos, ox, oy
- 	SetTimer, WatchTheMouse, 50
-	;SystemCursor("Toggle")
-}
-Else
-	Send {MButton}
+	;Hotkey, $*MButton Up, MButtonup, off
+	
+	;MouseGetPos,,, hWin,, 2
+	;WinGet, winProcessName, ProcessName, ahk_id %hWin%
+	;if (winProcessName == "sublime_text.exe" && !GetKeyState("RButton"))
+	;{
+	;	Send, {MButton down}
+	;	;tooltip, down
+	;	KeyWait, MButton
+	;	Send, {MButton up}
+	;	;tooltip, up
+	;	return
+	;}
+
+	KeyWait, MButton, T0.2
+	If ErrorLevel = 1
+	{
+		Hotkey, $*MButton Up, MButtonup, on
+		MouseGetPos, ox, oy
+	 	SetTimer, WatchTheMouse, 50
+		;SystemCursor("Toggle")
+	}
+	Else
+	{
+		Send {MButton}
+	}
 return
 
 MButtonup:
-Hotkey, $*MButton Up, MButtonup, off
-SetTimer, WatchTheMouse, off
-;SystemCursor("Toggle")
+	Hotkey, $*MButton Up, MButtonup, off
+	SetTimer, WatchTheMouse, off
+	;SystemCursor("Toggle")
 return
 
 ; Initial start after MBUTTON has been pressed long enough: Scroll as soon the mouse has moved 4px into one direction
@@ -274,7 +313,7 @@ WatchTheMouse:
 		{
 			WinActivate, ahk_id %hWin%
 		}
-        LineScroll(hWin, 0, doTheScrollDirection)
+        LineScroll(0, doTheScrollDirection)
         doTheScrollDirection := 0
     }
 
@@ -282,22 +321,33 @@ WatchTheMouse:
     MouseMove ox, oy
 return
 
-LineScroll(hWnd, dx, dy)
+LineScroll(dx, dy)
 {
 	;DllCall("ScrollWindowEx" , UInt, hWnd, Int, dx, Int, dy, Int, NULL, Int, NULL, Int, 0, Int, 0, Uint, NULL)
-	if (dy > 0)
+	if (dy < 0)
 	{
 		direction := 1
 	}
-	else if dy < 0
+	else if dy > 0
 	{
 		direction := 0
 	}
+
+	coordmode, mouse, screen
+	mousegetpos mx,my,mouseWindowHandle,mouseControlHandle,2
+	setformat,integer,hex
+	handle_:= DllCall("WindowFromPoint", Int,x, Int,y)
+	;handle_ +=0
+
+	;tooltip mouse=%mouseWindowHandle% + %mouseControlHandle%  foundhandle=%handle_%
+
 	repeat := Abs(dy)
 	loop %repeat%
 	{
 		;tooltip, direction: %direction%`ndy: %dy%
-		DllCall("PostMessage","PTR",hWnd,"UInt",0x115,"PTR",direction,"PTR",1)
+		
+
+		DllCall("PostMessage","PTR",mouseWindowHandle,"UInt",0x115,"PTR",direction,"PTR",1)
 	}
 }
 
@@ -566,3 +616,27 @@ RemoveToolTip:
 	SetTimer, RemoveToolTip, Off
 	ToolTip
 return
+
+
+Exit_CustomMouseGestures(ExitReason, ExitCode) {
+
+	SaveSettings()
+
+	return 0 ; OnExit functions must return non-zero to prevent exit. In this case 0 to simly exit.
+}
+
+LoadSettings() {
+
+	global szIgnoreProcesses, szAllowProcesses, szSettingsPath
+
+	IniRead, szIgnoreProcesses, %szSettingsPath%, Settings, IgnoreProcesses, KSP.exe|mstsc.exe
+	IniRead, szAllowProcesses, %szSettingsPath%, Settings, AllowProcesses, explorer.exe|firefox.exe
+}
+
+SaveSettings() {
+
+	global szIgnoreProcesses, szAllowProcesses, szSettingsPath
+
+	IniWrite, %szIgnoreProcesses%, %szSettingsPath%, Settings, IgnoreProcesses
+	IniWrite, %szAllowProcesses%, %szSettingsPath%, Settings, AllowProcesses
+}
