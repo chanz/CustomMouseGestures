@@ -556,6 +556,9 @@ rbutton::
 	fireFoxAdressBarPosY:=iStartPos_WindowPosY+53 ; Adressbar is in second row in firefox menus
 	;fireFoxAdressBarPosY:=iStartPos_WindowPosY+23 ; Adressbar is in first row in firefox menu
 
+	chromeAdressBarPosX:=iStartPos_WindowPosX+(iStarPos_WindowWidth/2)
+	chromeAdressBarPosY:=iStartPos_WindowPosY+55 ; Adressbar is in second row in firefox menus
+
 	if (gst="dr")
 	{
 		if (szStartPos_WindowProcessName="firefox.exe") 
@@ -567,6 +570,12 @@ rbutton::
 		else if (szStartPos_WindowProcessName="sublime_text.exe") {
 			Send, ^w
 		}
+		else if (szStartPos_WindowProcessName="chrome.exe") 
+		{
+			MouseClick,, chromeAdressBarPosX, chromeAdressBarPosY
+			Send, ^w
+			MouseMove, iEndPos_X, iEndPos_Y
+		}
 		else {
 			WinClose, ahk_id %widStartPos_Window%
 		}
@@ -577,6 +586,14 @@ rbutton::
 		{
 
 			MouseClick,, fireFoxAdressBarPosX, fireFoxAdressBarPosY
+			Send, {F6}
+			Send, ^+t
+			MouseMove, iEndPos_X, iEndPos_Y
+		}
+		else if (szStartPos_WindowProcessName="chrome.exe") 
+		{
+
+			MouseClick,, chromeAdressBarPosX, chromeAdressBarPosY
 			Send, {F6}
 			Send, ^+t
 			MouseMove, iEndPos_X, iEndPos_Y
