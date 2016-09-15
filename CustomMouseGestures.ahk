@@ -31,6 +31,7 @@ LoadSettings()
 OnExit("Exit_CustomMouseGestures")
 
 ; Incode Vars (dont' change)
+listSnappedWindows=""
 mWheelUsed:=0
 bBlockActivation:=0
 SetTimer, CheckActiveWindow, 1000
@@ -46,51 +47,174 @@ CheckActiveWindow:
 	}
 return
 
-#Home::
-	MoveWinToQuadrant("top")
-return
 
-#Ins::
-	MoveWinToQuadrant("topleft")
-return
+*~LButton::
 
-#PgUp::
-	MoveWinToQuadrant("topright")
-return
+	MouseGetPos, x, y, hwnd
 
-#End::
-	MoveWinToQuadrant("bottom")
-return
+	SendMessage, 0x84, 0, (x&0xFFFF) | (y&0xFFFF) << 16,, ahk_id %hwnd%
 
-#Del::
-	MoveWinToQuadrant("bottomleft")
-return
+	RegExMatch("ERROR TRANSPARENT NOWHERE CLIENT CAPTION SYSMENU SIZE MENU HSCROLL VSCROLL MINBUTTON MAXBUTTON LEFT RIGHT TOP TOPLEFT TOPRIGHT BOTTOM BOTTOMLEFT BOTTOMRIGHT BORDER OBJECT CLOSE HELP", "(?:\w+\s+){" . ErrorLevel+2&0xFFFFFFFF . "}(?<AREA>\w+\b)", HT)
 
-#PgDn::
-	MoveWinToQuadrant("bottomright")
-return
+	if htarea!=CAPTION
+	{
+		Return
+	}
 
-MoveWinToQuadrant(quadrant="top") {
+	MouseGetPos,_x,_y
+
+	While GetKeyState("LButton","P") && x=_x && y=_y ;Wait until user begins dragging
+	{
+		MouseGetPos,_x,_y
+	}
+
+	While GetKeyState("LButton","P") ;Show ToolTip while dragging
+	{
+		;ToolTip Dragging window
+
+	}
+
+	;ToolTip ;hide ToolTip
+
+Return
+
+;#Home::
+;	MoveWinTo("top")
+;return
+;
+;#Ins::
+;	MoveWinTo("topleft")
+;return
+;
+;#PgUp::
+;	MoveWinTo("topright")
+;return
+;
+;#End::
+;	MoveWinTo("bottom")
+;return
+;
+;#Del::
+;	MoveWinTo("bottomleft")
+;return
+;
+;#PgDn::
+;	MoveWinTo("bottomright")
+;return
+;
+;#Up::
+;	MoveWinTo("maximize")
+;return
+;
+;#Down::
+;	MoveWinTo("restore")
+;return
+;
+;#Left::
+;	MoveWinTo("left")
+;return
+;
+;#Right::
+;	MoveWinTo("right")
+;return
+
+SnapWindow(hWnd){
+
+	global listSnappedWindows
+
+	; Prevent snapped windows from being snapped once more
+	Loop, parse, listSnappedWindows, `n
+	{
+		if (A_LoopField = hWnd){
+			
+			return
+		}
+	}
+
+	; Snap Window
+	;Send, #{Right}
+	listSnappedWindows=%hWnd%`n%listSnappedWindows%
+}
+
+UnSnapWindow(hWnd){
+
+	global listSnappedWindows
+
+	newListOfSnappedWindows=""
+
+	Loop, parse, listSnappedWindows, `n
+	{
+		if (A_LoopField = hWnd){
+
+			;Send, #{Down}
+		}
+		else {
+
+			newListOfSnappedWindows=%hWnd%`n%newListOfSnappedWindows%
+		}
+	}
+
+	listSnappedWindows:=newListOfSnappedWindows
+}
+
+MoveWinTo(quadrant="top") {
+
+	
 	global bBlockActivation
+
 	if (bBlockActivation=1){
 		return
 	}
-	WinGet, active_id, ID, A
-	bBlockActivation:=1
-	WinGetPos, x, y,,, ahk_id %active_id%,,,
-	monitor:=GetMonitorByPos(x+10, y+10)
 
-	result:=GetMonitorQuadrant(monitor, quadrant, x, y, width, height)
-	if (result=1) {
+	WinGet, active_id, ID, A
+
+	if (active_id="") {
 		return
 	}
+	
+	bBlockActivation:=1
+
+	WinGetPos, x, y,,, ahk_id %active_id%,,,
+
 
 	;MsgBox, Going to...`nx%x%x %y%y`nwidth: %width% height:%height%
-	Send, #{Down}
-	WinRestore, ahk_id %active_id%
-	Send, #{Right}
-	WinMove, ahk_id %active_id%,, x, y, width, height
+	;Send, #{Down}
+	;WinRestore, ahk_id %active_id%
+
+	if (quadrant="restore") {
+
+		UnSnapWindow(active_id)
+	}
+	else {
+
+		monitor:=GetMonitorByPos(x+10, y+10)
+
+		result:=GetMonitorQuadrant(monitor, quadrant, x, y, width, height)
+
+		if (result<>1) {
+
+			SnapWindow(active_id)
+			WinMove, ahk_id %active_id%,, x, y, width, height
+		}
+	}
+
 	bBlockActivation:=0
+}
+
+HideWindowBorder(hWnd){
+
+	WinSet, Style, -0xC00000, %hWnd% ; hide title bar
+	WinSet, Style, -0x800000, %hWnd% ; hide thin-line border
+	WinSet, Style, -0x400000, %hWnd% ; hide dialog frame
+	WinSet, Style, -0x40000 , %hWnd%; hide thickframe/sizebox
+}
+
+ShowWindowBorder(hWnd){
+
+	WinSet, Style, +0xC00000, %hWnd% ; hide title bar
+	WinSet, Style, +0x800000, %hWnd% ; hide thin-line border
+	WinSet, Style, +0x400000, %hWnd% ; hide dialog frame
+	WinSet, Style, +0x40000 , %hWnd%; hide thickframe/sizebox
 }
 
 GetMonitorByPos(x, y) {
@@ -110,18 +234,17 @@ GetMonitorQuadrant(monitorNumber, quadrantName="top", ByRef x=0, ByRef y=0, ByRe
 
 	SysGet, MonitorWorkArea, MonitorWorkArea, %monitorNumber%
 
-	if (quadrantName="top") {
-		width:=MonitorWorkAreaRight-MonitorWorkAreaLeft
-		height:=MonitorWorkAreaBottom-MonitorWorkAreaTop
+	width:=MonitorWorkAreaRight-MonitorWorkAreaLeft
+	height:=MonitorWorkAreaBottom-MonitorWorkAreaTop
 
+	if (quadrantName="top") {
+		
 		height:=Round(height/2)
 
 		x:=MonitorWorkAreaLeft
 		y:=MonitorWorkAreaTop
 	}
 	else if (quadrantName="topleft") {
-		width:=MonitorWorkAreaRight-MonitorWorkAreaLeft
-		height:=MonitorWorkAreaBottom-MonitorWorkAreaTop
 
 		width:=Round(width/2)
 		height:=Round(height/2)
@@ -130,8 +253,6 @@ GetMonitorQuadrant(monitorNumber, quadrantName="top", ByRef x=0, ByRef y=0, ByRe
 		y:=MonitorWorkAreaTop
 	}
 	else if (quadrantName="topright") {
-		width:=MonitorWorkAreaRight-MonitorWorkAreaLeft
-		height:=MonitorWorkAreaBottom-MonitorWorkAreaTop
 
 		width:=Round(width/2)
 		height:=Round(height/2)
@@ -140,8 +261,6 @@ GetMonitorQuadrant(monitorNumber, quadrantName="top", ByRef x=0, ByRef y=0, ByRe
 		y:=MonitorWorkAreaTop
 	}
 	else if (quadrantName="bottom") {
-		width:=MonitorWorkAreaRight-MonitorWorkAreaLeft
-		height:=MonitorWorkAreaBottom-MonitorWorkAreaTop
 
 		height:=Round(height/2)
 
@@ -149,8 +268,6 @@ GetMonitorQuadrant(monitorNumber, quadrantName="top", ByRef x=0, ByRef y=0, ByRe
 		y:=MonitorWorkAreaBottom-height
 	}
 	else if (quadrantName="bottomleft") {
-		width:=MonitorWorkAreaRight-MonitorWorkAreaLeft
-		height:=MonitorWorkAreaBottom-MonitorWorkAreaTop
 
 		width:=Round(width/2)
 		height:=Round(height/2)
@@ -159,14 +276,26 @@ GetMonitorQuadrant(monitorNumber, quadrantName="top", ByRef x=0, ByRef y=0, ByRe
 		y:=MonitorWorkAreaBottom-height
 	}
 	else if (quadrantName="bottomright") {
-		width:=MonitorWorkAreaRight-MonitorWorkAreaLeft
-		height:=MonitorWorkAreaBottom-MonitorWorkAreaTop
 
 		width:=Round(width/2)
 		height:=Round(height/2)
 
 		x:=MonitorWorkAreaRight-width
 		y:=MonitorWorkAreaBottom-height
+	}
+	else if (quadrantName="maximize") {
+
+		width:=width+8
+		height:=height+8
+		
+		x:=MonitorWorkAreaLeft-4
+		y:=MonitorWorkAreaTop-4
+	}
+	else if (quadrantName="left") {
+
+	}
+	else if (quadrantName="right") {
+
 	}
 	else {
 		ToolTipTime("error unknowen quadrant: %quadrantName%")
@@ -188,9 +317,29 @@ GetMonitorQuadrant(monitorNumber, quadrantName="top", ByRef x=0, ByRef y=0, ByRe
 
 return
 
+^+F1::
+	toggleVirtualDesktop()
+return
+
+toggleVirtualDesktop(){
+	static virtDesktopToggle
+	
+	if (virtDesktopToggle == true) {
+		send, ^!{Left}
+		;ToolTip, #1virtDesktopToggle: %virtDesktopToggle%
+		virtDesktopToggle := false
+
+	}
+	else {
+		send, ^!{Right}
+		;ToolTip, #2virtDesktopToggle: %virtDesktopToggle%
+		virtDesktopToggle := true
+	}
+}
+
 ^F2::
-	MouseGetPos,,, hWin,, 2 ; Get window handle under the mouse position
-	WinGet, winProcessName, ProcessName, ahk_id %hWin% ; Get processname form the window under the mouse
+	MouseGetPos,,, hWnd,, 2 ; Get window handle under the mouse position
+	WinGet, winProcessName, ProcessName, ahk_id %hWnd% ; Get processname form the window under the mouse
 
 	; add the processname to the ignore list
 	szIgnoreProcesses=%winProcessName%|%szIgnoreProcesses%
@@ -213,9 +362,9 @@ WheelDown::
 	NormalScrollSpeed := 1 * WheelDelta
 	FastScrollSpeed := 6 * WheelDelta
 
-	MouseGetPos,,, hWin,, 2
+	MouseGetPos,,, hWnd,, 2
 
-	WinGetTitle, hWinTitle, ahk_id %hWin%
+	WinGetTitle, hWinTitle, ahk_id %hWnd%
 
 	if (hWinTitle == "") {
 		if (GetKeyState("Ctrl", P)) {
@@ -225,9 +374,9 @@ WheelDown::
 		return
 	}
 
-	IfWinNotActive, ahk_id %hwin%
+	IfWinNotActive, ahk_id %hWnd%
 	{
-		WinActivate, ahk_id %hWin%
+		WinActivate, ahk_id %hWnd%
 	}
 
 	if (GetKeyState("RButton","P")) {
@@ -260,8 +409,8 @@ return
 $*MButton::
 	;Hotkey, $*MButton Up, MButtonup, off
 	
-	;MouseGetPos,,, hWin,, 2
-	;WinGet, winProcessName, ProcessName, ahk_id %hWin%
+	;MouseGetPos,,, hWnd,, 2
+	;WinGet, winProcessName, ProcessName, ahk_id %hWnd%
 	;if (winProcessName == "sublime_text.exe" && !GetKeyState("RButton"))
 	;{
 	;	Send, {MButton down}
@@ -321,12 +470,12 @@ WatchTheMouse:
 
     if (doTheScrollDirection != 0)
     {
-        MouseGetPos,,, hWin,, 2
-        IfWinNotActive, ahk_id %hwin%
+        MouseGetPos,,, hWnd,, 2
+        IfWinNotActive, ahk_id %hWnd%
 		{
-			WinActivate, ahk_id %hWin%
+			WinActivate, ahk_id %hWnd%
 		}
-        LineScroll(hWin, 0, doTheScrollDirection)
+        LineScroll(hWnd, 0, doTheScrollDirection)
         doTheScrollDirection := 0
     }
 
@@ -403,14 +552,15 @@ rbutton::
 	; tooltip, szStartPos_WindowProcessName: %szStartPos_WindowProcessName%
 	WinGetPos, iStartPos_WindowPosX, iStartPos_WindowPosY, iStarPos_WindowWidth, iStarPos_WindowHeight, ahk_id %widStartPos_Window%
 
+	fireFoxAdressBarPosX:=iStartPos_WindowPosX+(iStarPos_WindowWidth/2)
+	fireFoxAdressBarPosY:=iStartPos_WindowPosY+53 ; Adressbar is in second row in firefox menus
+	;fireFoxAdressBarPosY:=iStartPos_WindowPosY+23 ; Adressbar is in first row in firefox menu
+
 	if (gst="dr")
 	{
 		if (szStartPos_WindowProcessName="firefox.exe") 
 		{
-			adressBarPosX:=iStartPos_WindowPosX+(iStarPos_WindowWidth/2)
-			adressBarPosY:=iStartPos_WindowPosY+53
-
-			MouseClick,, adressBarPosX, adressBarPosY
+			MouseClick,, fireFoxAdressBarPosX, fireFoxAdressBarPosY
 			Send, ^w
 			MouseMove, iEndPos_X, iEndPos_Y
 		}
@@ -425,10 +575,8 @@ rbutton::
 	{
 		if (szStartPos_WindowProcessName="firefox.exe") 
 		{
-			adressBarPosX:=iStartPos_WindowPosX+(iStarPos_WindowWidth/2)
-			adressBarPosY:=iStartPos_WindowPosY+53
 
-			MouseClick,, adressBarPosX, adressBarPosY
+			MouseClick,, fireFoxAdressBarPosX, fireFoxAdressBarPosY
 			Send, {F6}
 			Send, ^+t
 			MouseMove, iEndPos_X, iEndPos_Y
@@ -441,10 +589,7 @@ rbutton::
 	{
 		if (szStartPos_WindowProcessName="firefox.exe") 
 		{
-			adressBarPosX:=iStartPos_WindowPosX+(iStarPos_WindowWidth/2)
-			adressBarPosY:=iStartPos_WindowPosY+53
-
-			MouseClick,, adressBarPosX, adressBarPosY
+			MouseClick,, fireFoxAdressBarPosX, fireFoxAdressBarPosY
 			Send, {F6}
 			Send, ^{TAB}
 			MouseMove, iEndPos_X, iEndPos_Y
@@ -457,10 +602,7 @@ rbutton::
 	{
 		if (szStartPos_WindowProcessName="firefox.exe") 
 		{
-			adressBarPosX:=iStartPos_WindowPosX+(iStarPos_WindowWidth/2)
-			adressBarPosY:=iStartPos_WindowPosY+53
-
-			MouseClick,, adressBarPosX, adressBarPosY
+			MouseClick,, fireFoxAdressBarPosX, fireFoxAdressBarPosY
 			Send, {F6}
 			Send, ^+{TAB}
 			MouseMove, iEndPos_X, iEndPos_Y
@@ -473,10 +615,7 @@ rbutton::
 	{
 		if (szStartPos_WindowProcessName="firefox.exe") 
 		{
-			adressBarPosX:=iStartPos_WindowPosX+(iStarPos_WindowWidth/2)
-			adressBarPosY:=iStartPos_WindowPosY+53
-
-			MouseClick,, adressBarPosX, adressBarPosY
+			MouseClick,, fireFoxAdressBarPosX, fireFoxAdressBarPosY
 			Send, !{ENTER}
 			MouseMove, iEndPos_X, iEndPos_Y
 		}
@@ -485,10 +624,7 @@ rbutton::
 	{
 		if (szStartPos_WindowProcessName="firefox.exe") 
 		{
-			adressBarPosX:=iStartPos_WindowPosX+(iStarPos_WindowWidth/2)
-			adressBarPosY:=iStartPos_WindowPosY+53
-
-			MouseClick,, adressBarPosX, adressBarPosY
+			MouseClick,, fireFoxAdressBarPosX, fireFoxAdressBarPosY
 			Send, ^r
 			Send, {F6}
 			MouseMove, iEndPos_X, iEndPos_Y
